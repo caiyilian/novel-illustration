@@ -1,0 +1,26 @@
+# 第三方依赖
+.venv/
+
+# 大文件 / 模型权重
+models/
+PuLID/
+
+# whl 安装包
+whl/
+
+# 测试输出
+test_outputs/
+
+# 参考图（可能包含版权图片）
+ref_images/
+
+# 日志
+*.log
+
+# 个人配置
+opencode.jsonc
+.github-rel
+
+# 系统文件
+__pycache__/
+*.pyc
