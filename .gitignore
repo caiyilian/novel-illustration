@@ -24,7 +24,4 @@ opencode.jsonc
 # 系统文件
 __pycache__/
 *.pyc
-# 本地启动脚本（含服务器特定配置）
-run_api.sh
-test_api.sh
-test_api.py
+
