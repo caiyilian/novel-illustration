@@ -38,14 +38,20 @@
 
 ---
 
-## ☐ 3. FLUX.2 klein (4B)
+## ✅ 3. FLUX.2-klein-4B
 
 | 项目 | 内容 |
 |------|------|
 | 基座 | FLUX.2 |
+| 参数量 | 4B |
 | 估测显存 | ~13GB |
-| 官方仓库 | Black Forest Labs (待确认) |
-| 状态 | ⏳ 待部署 |
+| 许可 | Apache 2.0 ✅ |
+| 官方仓库 | https://huggingface.co/black-forest-labs/FLUX.2-klein-4B |
+| 状态 | ✅ **已部署** |
+| 峰值显存 | 待测 |
+| 速度 | ~1.6s/it（4步，CPU offload） |
+| 脚本 | 已集成到 API（method=fluxklein） |
+| 实测结论 | ✅ **画质好，速度快**。缺点是纯文生图，无身份保持能力，无法用参考图控制长相。 |
 
 ---
 
