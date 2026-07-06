@@ -62,12 +62,15 @@ Content-Type: multipart/form-data
 |------|------|------|--------|------|
 | `prompt` | string | 是 | — | 场景描述 |
 | `ref_image` | file | 否 | — | 角色参考图（PNG/JPG），不传则无参考图模式 |
+| `method` | string | 否 | `pulid` | 身份保持方法：`pulid`（推荐，质量更好）或 `instantid`（脸容易崩） |
 | `neg_prompt` | string | 否 | 见下方 | 负面提示词 |
 | `seed` | int | 否 | -1（随机） | 随机种子 |
-| `steps` | int | 否 | 25 | 推理步数（20-30） |
-| `cfg` | float | 否 | 7.0 | CFG 强度 |
-| `id_scale` | float | 否 | 0.8 | 身份保持强度（0.5-1.5，越高越像参考图） |
-| `num_zero` | int | 否 | 20 | 身份可编辑性（10-30，越低越像参考图） |
+| `steps` | int | 否 | 25(PuLID)/30(InstantID) | 推理步数 |
+| `cfg` | float | 否 | 7.0(PuLID)/5.0(InstantID) | CFG 强度 |
+| `id_scale` | float | 否 | 0.8 | PuLID 身份保持强度（0.5-1.5） |
+| `num_zero` | int | 否 | 20 | PuLID 身份可编辑性（10-30） |
+| `ip_scale` | float | 否 | 0.8 | InstantID IP-Adapter 强度 |
+| `cn_scale` | float | 否 | 0.8 | InstantID ControlNet 强度 |
 | `height` | int | 否 | 1152 | 图片高度 |
 | `width` | int | 否 | 896 | 图片宽度 |
 
@@ -110,7 +113,7 @@ with open('output.png', 'wb') as f:
 print('Generated:', 'output.png')
 ```
 
-### 有参考图模式
+### 有参考图模式（PuLID，默认）
 
 ```python
 import requests
@@ -122,6 +125,7 @@ with open('holo.png', 'rb') as f:
         'prompt': 'portrait of a cute wolf girl with brown hair and wolf ears, '
                   'medieval traveler outfit, smiling, warm tavern interior, '
                   'anime style, masterpiece',
+        'method': 'pulid',  # puLID（推荐，质量更好）
         'id_scale': 0.8,
         'num_zero': 20,
         'steps': 25,
@@ -132,6 +136,20 @@ with open('holo.png', 'rb') as f:
 with open('tavern_scene.png', 'wb') as f:
     f.write(resp.content)
 print('Generated:', 'tavern_scene.png')
+```
+
+### 有参考图模式（InstantID，备选）
+
+```python
+resp = requests.post(f'{BASE}/generate', data={
+    'prompt': 'portrait of a cute wolf girl, tavern',
+    'method': 'instantid',  # InstantID（人脸易崩，不推荐）
+    'ip_scale': 0.8,
+    'cn_scale': 0.8,
+    'steps': 30,
+}, files={
+    'ref_image': open('holo.png', 'rb'),
+})
 ```
 
 ### 批量生成（多场景、同一角色）
