@@ -22,14 +22,19 @@
 
 ---
 
-## ☐ 2. IP-Adapter-FaceID (SDXL)
+## ✅ 2. IP-Adapter-FaceID (SDXL)
 
 | 项目 | 内容 |
 |------|------|
 | 基座 | SDXL |
 | 估测显存 | ~10GB |
 | 官方仓库 | https://huggingface.co/h94/IP-Adapter-FaceID |
-| 状态 | ⏳ 待部署 |
+| 状态 | ✅ **已部署** |
+| 脚本 | `scripts/generate_ipadapter.py` |
+| 模型位置 | `IP-Adapter/models/` |
+| 峰值显存 | 13202 MiB |
+| 速度 | ~7.17 it/s（20步，18.7s） |
+| 实测结论 | ❌ **图很怪，像乱码。** IP-Adapter-FaceID 的 LoRA + IP-Adapter 组合对 SDXL 模型行为干扰较大，生成质量差，不如 PuLID。 |
 
 ---
 
