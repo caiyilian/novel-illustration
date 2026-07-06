@@ -1,5 +1,6 @@
 """
 Novel Voice Cast — 插图生成 API 服务
+支持方法: pulid（默认）, instantid
 用法: python api_server.py [--port 8000] [--device cuda:2]
 """
 
@@ -8,7 +9,6 @@ import io
 import gc
 import os
 import sys
-import uuid
 from pathlib import Path
 
 import numpy as np
@@ -21,11 +21,12 @@ import uvicorn
 
 BASE_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(BASE_DIR / 'PuLID'))
+sys.path.insert(0, str(BASE_DIR / 'InstantID'))
 
 os.environ['HF_HUB_OFFLINE'] = '1'
 
+# --- eva_clip patch (for PuLID) ---
 import eva_clip.factory as eva_factory
-_orig_lsd = eva_factory.load_state_dict
 def _patched_lsd(cp, ml='cpu', mk='model|module|state_dict', io=False, sl=[]):
     ck = torch.load(cp, map_location=ml, weights_only=False)
     for m in mk.split('|'):
@@ -47,16 +48,16 @@ from generate_illustration import PuLIDGenerator, SDXL_LOCAL_PATH, DEFAULT_NEGAT
 app = FastAPI(title='Novel Voice Cast - Illustration Generator')
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
 
-generator = None
+pulid = None
 device = 'cuda'
 
 
 @app.on_event('startup')
 def load_models():
-    global generator
+    global pulid
     print(f'Loading PuLID + SDXL on {device}...')
-    generator = PuLIDGenerator(device=device)
-    print('Ready.')
+    pulid = PuLIDGenerator(device=device)
+    print('Ready. Supported methods: pulid, instantid')
 
 
 @app.post('/generate')
@@ -64,6 +65,7 @@ async def generate(
     prompt: str = Form(...),
     ref_image: UploadFile = File(None),
     neg_prompt: str = Form(DEFAULT_NEGATIVE_PROMPT),
+    method: str = Form('pulid'),
     seed: int = Form(-1),
     steps: int = Form(25),
     cfg: float = Form(7.0),
@@ -71,25 +73,37 @@ async def generate(
     height: int = Form(1152),
     width: int = Form(896),
     num_zero: int = Form(20),
+    ip_scale: float = Form(0.8),
+    cn_scale: float = Form(0.8),
 ):
     seed = seed if seed != -1 else torch.Generator(device='cpu').seed()
     torch.set_grad_enabled(False)
 
     if ref_image is not None:
-        attention.NUM_ZERO = num_zero
-        attention.ORTHO = False
-        attention.ORTHO_v2 = True
-
-        img_data = await ref_image.read()
-        id_image = np.array(Image.open(io.BytesIO(img_data)).convert('RGB'))
-        id_image = resize_numpy_image_long(id_image, 1024)
-        uncond_id_embedding, id_embedding = generator.get_id_embedding([id_image])
-
-        img = generator.generate(
-            prompt, (1, height, width), neg_prompt,
-            id_embedding, uncond_id_embedding,
-            id_scale, cfg, steps, seed,
-        )
+        if method == 'instantid':
+            from generate_instantid import InstantIDGenerator
+            gen = InstantIDGenerator(device=device)
+            img_data = await ref_image.read()
+            ref_pil = Image.open(io.BytesIO(img_data)).convert('RGB')
+            img = gen.generate(
+                prompt, neg_prompt, ref_pil,
+                (height, width), steps, cfg,
+                ip_scale, cn_scale, seed,
+            )
+            del gen; gc.collect(); torch.cuda.empty_cache()
+        else:
+            attention.NUM_ZERO = num_zero
+            attention.ORTHO = False
+            attention.ORTHO_v2 = True
+            img_data = await ref_image.read()
+            id_image = np.array(Image.open(io.BytesIO(img_data)).convert('RGB'))
+            id_image = resize_numpy_image_long(id_image, 1024)
+            uncond_id_embedding, id_embedding = pulid.get_id_embedding([id_image])
+            img = pulid.generate(
+                prompt, (1, height, width), neg_prompt,
+                id_embedding, uncond_id_embedding,
+                id_scale, cfg, steps, seed,
+            )
     else:
         from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
         pipe = StableDiffusionXLPipeline.from_pretrained(
