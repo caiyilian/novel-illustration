@@ -57,7 +57,7 @@ def load_models():
     global pulid
     print(f'Loading PuLID + SDXL on {device}...')
     pulid = PuLIDGenerator(device=device)
-    print('Ready. Supported methods: pulid, instantid')
+    print('Ready. Methods: pulid, instantid, animagine, pulid_animagine, fluxklein')
 
 
 @app.post('/generate')
@@ -93,6 +93,67 @@ async def generate(
             num_inference_steps=min(steps, 4),
             generator=torch.manual_seed(seed),
         ).images[0]
+    elif method == 'animagine':
+        from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
+        pipe = StableDiffusionXLPipeline.from_pretrained(
+            str(BASE_DIR / 'models' / 'animagine-xl-3.1'),
+            torch_dtype=torch.float16, use_safetensors=True,
+        ).to(device)
+        pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+        img = pipe(
+            prompt=prompt, negative_prompt=neg_prompt,
+            height=height, width=width,
+            num_inference_steps=steps, guidance_scale=cfg,
+            generator=torch.manual_seed(seed),
+        ).images[0]
+    elif method == 'pulid_animagine':
+        model_path = str(BASE_DIR / 'models' / 'animagine-xl-3.1')
+        if ref_image is not None:
+            from pulid import attention_processor as attention
+            from pulid.utils import resize_numpy_image_long
+            from generate_illustration import PuLIDGenerator, DEFAULT_NEGATIVE_PROMPT
+            from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
+            from pulid.encoders_transformer import IDFormer
+            from pulid.utils import is_torch2_available
+            if is_torch2_available():
+                from pulid.attention_processor import AttnProcessor2_0 as AP, IDAttnProcessor2_0 as IDAP
+            else:
+                from pulid.attention_processor import AttnProcessor as AP, IDAttnProcessor as IDAP
+            pipe = StableDiffusionXLPipeline.from_pretrained(
+                model_path, torch_dtype=torch.float16, use_safetensors=True
+            ).to(device)
+            pipe.watermark = None
+            procs = {}
+            for name, _ in pipe.unet.attn_processors.items():
+                ca = None if name.endswith('attn1.processor') else pipe.unet.config.cross_attention_dim
+                if name.startswith('mid_block'): hs = pipe.unet.config.block_out_channels[-1]
+                elif name.startswith('up_blocks'): hs = list(reversed(pipe.unet.config.block_out_channels))[int(name[len('up_blocks.')])]
+                elif name.startswith('down_blocks'): hs = pipe.unet.config.block_out_channels[int(name[len('down_blocks.')])]
+                procs[name] = IDAP(hidden_size=hs, cross_attention_dim=ca).to(device) if ca is not None else AP()
+            pipe.unet.set_attn_processor(procs)
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+            gen = PuLIDGenerator(device=device)
+            gen.pipe = pipe
+            gen.id_adapter_attn_layers = torch.nn.ModuleList(pipe.unet.attn_processors.values())
+            attention.NUM_ZERO = num_zero; attention.ORTHO = False; attention.ORTHO_v2 = True
+            img_data = await ref_image.read()
+            id_image = np.array(Image.open(io.BytesIO(img_data)).convert('RGB'))
+            id_image = resize_numpy_image_long(id_image, 1024)
+            uncond, id_emb = gen.get_id_embedding([id_image])
+            img = gen.generate(prompt, (1, height, width), neg_prompt, id_emb, uncond, id_scale, cfg, steps, seed)
+            del gen, pipe; gc.collect(); torch.cuda.empty_cache()
+        else:
+            from diffusers import StableDiffusionXLPipeline, DPMSolverMultistepScheduler
+            pipe = StableDiffusionXLPipeline.from_pretrained(
+                model_path, torch_dtype=torch.float16, use_safetensors=True,
+            ).to(device)
+            pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+            img = pipe(
+                prompt=prompt, negative_prompt=neg_prompt,
+                height=height, width=width,
+                num_inference_steps=steps, guidance_scale=cfg,
+                generator=torch.manual_seed(seed),
+            ).images[0]
     elif ref_image is not None:
         if method == 'instantid':
             from generate_instantid import InstantIDGenerator

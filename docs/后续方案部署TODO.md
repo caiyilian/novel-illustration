@@ -48,10 +48,9 @@
 | 许可 | Apache 2.0 ✅ |
 | 官方仓库 | https://huggingface.co/black-forest-labs/FLUX.2-klein-4B |
 | 状态 | ✅ **已部署** |
-| 峰值显存 | 待测 |
 | 速度 | ~1.6s/it（4步，CPU offload） |
-| 脚本 | 已集成到 API（method=fluxklein） |
-| 实测结论 | ✅ **画质好，速度快**。缺点是纯文生图，无身份保持能力，无法用参考图控制长相。 |
+| 已集成到 API | method=fluxklein |
+| 实测结论 | ✅ **画质好，速度快**。纯文生图，无身份保持能力。 |
 
 ---
 
@@ -61,8 +60,9 @@
 |------|------|
 | 基座 | SDXL |
 | 估测显存 | ~8-10GB |
-| 可选模型 | Illustrious / RouWei-0.6 / Anima |
-| 状态 | ⏳ 待部署 |
+| 推荐模型 | **Animagine XL 3.1**（动漫特化，基于 SDXL，OpenRAIL++） |
+| 下载方式 | `bash download_animagine.sh`（~7GB） |
+| 部署方式 | 替换 SDXL base 1.0 路径，无需改代码，PuLID/InstantID/fluxklein 均可复用 |
 
 ---
 
