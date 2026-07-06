@@ -79,7 +79,21 @@ async def generate(
     seed = seed if seed != -1 else torch.Generator(device='cpu').seed()
     torch.set_grad_enabled(False)
 
-    if ref_image is not None:
+    if method == 'fluxklein':
+        from diffusers import Flux2KleinPipeline
+        pipe = Flux2KleinPipeline.from_pretrained(
+            str(BASE_DIR / 'models' / 'FLUX.2-klein-4B'),
+            torch_dtype=torch.bfloat16,
+        )
+        pipe.enable_model_cpu_offload()
+        img = pipe(
+            prompt=prompt,
+            height=height, width=width,
+            guidance_scale=1.0,
+            num_inference_steps=min(steps, 4),
+            generator=torch.manual_seed(seed),
+        ).images[0]
+    elif ref_image is not None:
         if method == 'instantid':
             from generate_instantid import InstantIDGenerator
             gen = InstantIDGenerator(device=device)
