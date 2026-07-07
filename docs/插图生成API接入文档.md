@@ -62,11 +62,11 @@ Content-Type: multipart/form-data
 |------|------|------|--------|------|
 | `prompt` | string | 是 | — | 场景描述 |
 | `ref_image` | file | 否 | — | 角色参考图（PNG/JPG），不传则无参考图模式 |
-| `method` | string | 否 | `pulid` | 生成方法：`pulid`（身份保持，推荐）、`instantid`（身份保持，脸易崩）、`fluxklein`（纯文生图，无身份保持，质量好） |
+| `method` | string | 否 | `pulid` | 生成方法：`pulid`（身份保持，推荐）、`instantid`（身份保持，脸易崩）、`animagine`（纯文生图，动漫画质最好）、`pulid_animagine`（身份保持+动漫画风）、`fluxklein`（纯文生图） |
 | `neg_prompt` | string | 否 | 见下方 | 负面提示词 |
 | `seed` | int | 否 | -1（随机） | 随机种子 |
-| `steps` | int | 否 | 25(PuLID)/30(InstantID)/4(fluxklein) | 推理步数 |
-| `cfg` | float | 否 | 7.0(PuLID)/5.0(InstantID)/1.0(fluxklein) | CFG 强度 |
+| `steps` | int | 否 | 25 | 推理步数 |
+| `cfg` | float | 否 | 7.0 | CFG 强度 |
 | `id_scale` | float | 否 | 0.8 | PuLID 身份保持强度（0.5-1.5） |
 | `num_zero` | int | 否 | 20 | PuLID 身份可编辑性（10-30） |
 | `ip_scale` | float | 否 | 0.8 | InstantID IP-Adapter 强度 |
@@ -76,11 +76,13 @@ Content-Type: multipart/form-data
 
 **生成方法说明：**
 
-| method | 能力 | 支持参考图 |
-|--------|------|-----------|
-| `pulid`（默认） | 身份保持 ✅ 质量最好 | ✅ 支持 |
-| `instantid` | 身份保持 ⚠️ 脸易崩 | ✅ 支持 |
-| `fluxklein` | 纯文生图 ✅ 画质好 | ❌ 不支持 |
+| method | 能力 | 支持参考图 | 推荐场景 |
+|--------|------|-----------|---------|
+| `pulid`（默认） | 身份保持 ⭐⭐⭐⭐ | ✅ 支持 | 需要保持角色长相 |
+| `instantid` | 身份保持 ⭐⭐ 脸易崩 | ✅ 支持 | 有参考图但不在意脸崩 |
+| `animagine` | 纯文生图 ⭐⭐⭐⭐ | ❌ 不支持 | 无参考图，追求动漫画质（推荐） |
+| `pulid_animagine` | 身份保持+动漫 ⭐⭐⭐⭐ | ✅ 支持 | 需要保持角色长相+动漫画风 |
+| `fluxklein` | 纯文生图 ⭐⭐ | ❌ 不支持 | 无参考图，随便看看 |
 
 **返回：** PNG 图片二进制（直接写入文件即可）
 
