@@ -197,6 +197,48 @@ async def generate(
     return Response(content=buf.getvalue(), media_type='image/png')
 
 
+@app.post('/generate_video')
+async def generate_video(
+    prompt: str = Form(...),
+    task: str = Form('t2v'),
+    seed: int = Form(-1),
+    steps: int = Form(25),
+    cfg: float = Form(6.0),
+    fps: int = Form(8),
+):
+    seed = seed if seed != -1 else torch.Generator(device='cpu').seed()
+    torch.set_grad_enabled(False)
+
+    from diffusers import CogVideoXPipeline
+    from diffusers.utils import export_to_video
+    import tempfile
+
+    pipe = CogVideoXPipeline.from_pretrained(
+        str(BASE_DIR / 'models' / 'CogVideoX-2b'),
+        torch_dtype=torch.float16,
+    ).to(device)
+    pipe.enable_sequential_cpu_offload()
+    pipe.vae.enable_slicing()
+    pipe.vae.enable_tiling()
+
+    video = pipe(
+        prompt=prompt,
+        num_videos_per_prompt=1,
+        num_inference_steps=steps,
+        guidance_scale=cfg,
+        generator=torch.manual_seed(seed),
+    ).frames[0]
+
+    tmp = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+    export_to_video(video, tmp.name, fps=fps)
+
+    with open(tmp.name, 'rb') as f:
+        content = f.read()
+    os.unlink(tmp.name)
+
+    return Response(content=content, media_type='video/mp4')
+
+
 @app.get('/health')
 def health():
     return {'status': 'ok', 'device': device}
